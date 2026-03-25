@@ -1,0 +1,30 @@
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  qdrant_storage:
+  qdrant_snapshots:
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.14.1
+    restart: unless-stopped
+    env_file: .env
+    networks:
+      - dokploy-network
+    expose:
+      - "6333"
+    environment:
+      QDRANT__SERVICE__API_KEY: ${QDRANT_API_KEY}
+      QDRANT__TELEMETRY_DISABLED: "true"
+      QDRANT_ALLOW_RECOVERY_MODE: "true"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+      - qdrant_snapshots:/qdrant/snapshots
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333 && echo -e 'GET /healthz HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q 'HTTP/1.1 200' <&3"]
+      interval: 30s
+      timeout: 10s
+      start_period: 30s
+      retries: 3
